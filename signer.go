@@ -69,14 +69,20 @@ func MultiHash(in, out chan interface{}) {
 		go func(data interface{}, wg *sync.WaitGroup) {
 			results := make([]string, 6)
 			resultsWg := &sync.WaitGroup{}
+			resultsMu := &sync.Mutex{}
 
 			for index := 0; index < 6; index++ {
 				resultsWg.Add(1)
 
-				go func(results []string, index int, convertedData interface{}) {
-					results[index] = DataSignerCrc32(fmt.Sprintf("%d%s", index, convertedData))
+				go func(results []string, index int, convertedData interface{}, resultsWg *sync.WaitGroup, resultsMu *sync.Mutex) {
+					result := DataSignerCrc32(fmt.Sprintf("%d%s", index, convertedData))
+
+					resultsMu.Lock()
+					results[index] = result
+					resultsMu.Unlock()
+
 					resultsWg.Done()
-				}(results, index, fmt.Sprintf("%v", data))
+				}(results, index, fmt.Sprintf("%v", data), resultsWg, resultsMu)
 			}
 
 			resultsWg.Wait()
